@@ -1,1 +1,3 @@
-# demos-lac34437
+# demo-lac34437
+
+ClickerDemo code
