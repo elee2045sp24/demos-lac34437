@@ -27,3 +27,5 @@ You should now be able to compile and upload code to the M5StickCP2 by cloning i
 
 ## Once it is on and running hold down the front button while it is booting to begin WiFi install
 
+Once the WiFi config page launches on the M5StickCP2 display connect your phone/laptop to the WiFi network with the name provided
+
