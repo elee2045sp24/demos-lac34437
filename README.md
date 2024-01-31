@@ -1,3 +1,3 @@
-# demo-lac34437
+# ClickerDemo Installation Guide
 
-ClickerDemo code
+To upload the code onto your M5StickCP2
