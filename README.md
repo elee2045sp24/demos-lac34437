@@ -1,4 +1,4 @@
-# ClickerDemo Installation Guide
+# ClickerDemo Installation Guide *READ ME*
 
 To upload the code onto your M5StickCP2 you will need to have the M5Stack Board manager installed in your Arduino IDE
 
@@ -25,7 +25,11 @@ Search for your board in the list or in the search bar and then select the port 
 
 You should now be able to compile and upload code to the M5StickCP2 by cloning into this repository and getting the folder for demo.
 
-## Once it is on and running hold down the front button while it is booting to begin WiFi install
+## M5 On and Running
+Once it is on and running hold down the front button while it is booting to begin WiFi install
 
 Once the WiFi config page launches on the M5StickCP2 display connect your phone/laptop to the WiFi network with the name provided
+
+
+## If you would like to test the MQTT functionality on your own you can now run the test_mqtt.py file
 
