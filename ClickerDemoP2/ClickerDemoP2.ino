@@ -56,8 +56,6 @@ static int16_t *rec_data;
 
 //MQTT variables
 const char broker[] = "mqtt.ugavel.com";
-const char mqtt_user[] = "class_user";
-const char mqtt_password[] = "class_password";
 int mqtt_port = 1883;
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
@@ -525,7 +523,7 @@ void setup() {
 
   //MQTT setup
   mqttClient.onMessage(onMqttMessage);
-  mqttClient.setUsernamePassword(mqtt_user, mqtt_password);
+  mqttClient.setUsernamePassword("class_user", "class_password");
   mqttClient.connect(broker, mqtt_port);
   mqttClient.subscribe(topic_clicker_data);
 
