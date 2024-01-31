@@ -25,3 +25,5 @@ Search for your board in the list or in the search bar and then select the port 
 
 You should now be able to compile and upload code to the M5StickCP2 by cloning into this repository and getting the folder for demo.
 
+## Once it is on and running hold down the front button while it is booting to begin WiFi install
+
