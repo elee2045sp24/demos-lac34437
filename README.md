@@ -11,6 +11,7 @@ Once you have your board mangement setup you will need to check if you have the 
 - <ArduinoMqttClient.h>
 
 Here is how you check your installed libraries or get new libraries
+
 ![image](https://github.com/elee2045sp24/demos-lac34437/assets/111517420/a329ede3-6968-4764-8241-3e0cd8f9ff3d)
 
 
