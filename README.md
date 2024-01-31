@@ -18,5 +18,5 @@ Enter into this drop-down menu and you will be prompted with
 
 Search for your board in the list or in the search bar and then select the port your M5 is on. It may be the only one discovered or it may show more than one depending on what you have plugged in.
 
-You should now be able to compile and upload code to the M5StickCP2
+You should now be able to compile and upload code to the M5StickCP2 by cloning into this repository and getting the folder for demo.
 
