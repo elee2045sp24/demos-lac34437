@@ -6,7 +6,6 @@
 #include <Preferences.h>
 #include <DNSServer.h>
 #include <ArduinoMqttClient.h>
-#include <ArduinoJson.h>
 
 bool setupComplete = true;
 Preferences preferences;
@@ -15,6 +14,7 @@ WebServer server(80);
 HTTPClient http;
 const byte DNS_PORT = 53;
 DNSServer dnsServer;
+String station_mac = "none";
 
 bool hand_state = false;
 
@@ -55,11 +55,12 @@ static int16_t *rec_data;
 #define PIN_DATA 34
 
 //MQTT variables
-const char broker[] = "eduoracle.ugavel.com";
+const char broker[] = "mqtt.ugavel.com";
+const char mqtt_user[] = "class_user";
+const char mqtt_password[] = "class_password";
 int mqtt_port = 1883;
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
-const char topic_clicker_status[] = "ugaelee2045demo/user/topic_clicker_status";
 const char topic_clicker_data[] = "ugaelee2045demo/user/topic_clicker_data";
 char buffer[100];
 
@@ -139,14 +140,11 @@ void doWifiWifiSetup() {
   Serial.println(randomPassword);
 
   IPAddress apIP = WiFi.softAPIP();
-
   StickCP2.Display.println("Wifi setup");
   StickCP2.Display.println("Connect Wifi to");
   StickCP2.Display.println(softAPssid.c_str());
   StickCP2.Display.println("and go to");
-
   StickCP2.Display.println(apIP);
-
   StickCP2.Display.println("Password is");
   StickCP2.Display.println(randomPassword);
 
@@ -331,8 +329,6 @@ void getMicInfo() {
       // Reset counters for the next interval
       shortSum = 0;
       shortSampleCount = 0;
-
-
     }
     // Accumulate data for short average
     for (size_t i = 0; i < record_length; ++i) {
@@ -342,45 +338,14 @@ void getMicInfo() {
   }
 }
 
-//this (poorly named) function starts the microphone device with the desired parameters and initializes buffers
-//todo, implement some buffer size checks (record_size isn't really used)
-void I2Cinit() {
-  rec_data = (typeof(rec_data))heap_caps_malloc(record_size * sizeof(int16_t), MALLOC_CAP_8BIT); //ugly type conversions here
-  memset(rec_data, 0, record_size * sizeof(int16_t)); //there's no check anywhere against this buffer size.   
-  StickCP2.Speaker.setVolume(255);
-
-  StickCP2.Speaker.end();
+//this function starts the microphone device with the desired parameters and initializes buffers
+void micInit() {
   StickCP2.Mic.begin();
+    rec_data = (typeof(rec_data))heap_caps_malloc(record_size *
 
-  i2s_config_t i2s_config = {
-    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
-    .sample_rate = 44100,
-    .bits_per_sample =
-      I2S_BITS_PER_SAMPLE_16BIT,  // is fixed at 12bit, stereo, MSB
-    .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,
-  #if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 1, 0)
-    .communication_format =
-      I2S_COMM_FORMAT_STAND_I2S,  // Set the format of the communication.
-  #else                             
-    .communication_format = I2S_COMM_FORMAT_I2S,
-  #endif
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 3,
-    .dma_buf_len = 256,
-  };
-
-  i2s_pin_config_t pin_config;
-  #if (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 3, 0))
-  pin_config.mck_io_num = I2S_PIN_NO_CHANGE;
-  #endif
-  pin_config.bck_io_num = I2S_PIN_NO_CHANGE;
-  pin_config.ws_io_num = PIN_CLK;
-  pin_config.data_out_num = I2S_PIN_NO_CHANGE;
-  pin_config.data_in_num = PIN_DATA;
-
-  i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
-  i2s_set_pin(I2S_NUM_0, &pin_config);
-  i2s_set_clk(I2S_NUM_0, 44100, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+                                                  sizeof(int16_t),
+                                                MALLOC_CAP_8BIT);
+  memset(rec_data, 0, record_size * sizeof(int16_t));
 }
 
 //this function initializes the real time clock using network time protocol
@@ -406,6 +371,13 @@ void RTCinit() {
   while (t > time(nullptr));  /// Synchronization in seconds
   StickCP2.Rtc.setDateTime(gmtime(&t));
 
+}
+
+//gets battery voltage in mv
+void getBat() {
+    int vol = StickCP2.Power.getBatteryVoltage();
+    StickCP2.Display.setCursor(10, 10, 2);
+    StickCP2.Display.printf("BAT: %dmv", vol);
 }
 
 //this listens to my own topics for debugging
@@ -520,18 +492,15 @@ void setup() {
 
   auto cfg = M5.config();
   StickCP2.begin(cfg);
-  StickCP2.Display.init();
-  StickCP2.Display.startWrite();
   StickCP2.Display.setCursor(7, 20, 2);
   StickCP2.Display.setRotation(1);
   StickCP2.Display.setTextColor(GREEN);
   StickCP2.Display.setTextDatum(top_center);
-  StickCP2.Display.endWrite();
 
   preferences.begin("my-app", false);
 
   StickCP2.Display.clear();
-  StickCP2.Display.println("Hold button for Wifi Config");
+  StickCP2.Display.drawString("Hold Button for WiFi config", StickCP2.Display.width() / 2, StickCP2.Display.height() / 2);
 
   delay(2000);  // Two second config delay
 
@@ -552,14 +521,13 @@ void setup() {
 
   //Mic setup call
   Serial.println("Init Mic");
-  I2Cinit();
+  micInit();
 
   //MQTT setup
   mqttClient.onMessage(onMqttMessage);
-  mqttClient.setUsernamePassword("giiuser", "giipassword");
+  mqttClient.setUsernamePassword(mqtt_user, mqtt_password);
   mqttClient.connect(broker, mqtt_port);
   mqttClient.subscribe(topic_clicker_data);
-  mqttClient.subscribe(topic_clicker_status);
 
   Serial.println("Setup finished");
   StickCP2.Display.clear();
@@ -567,7 +535,7 @@ void setup() {
 
 void loop() {
   static unsigned long lastUpdateTime = 0;
-  const unsigned long updateInterval = 2000;  // Set the update interval to 1000 milliseconds (1 second)
+  const unsigned long updateInterval = 2000;  // Set the update interval to 2000 milliseconds (2 second)
 
   mqttClient.poll(); // Checks for MQTT messages
   StickCP2.update(); // Checks for button presses
@@ -576,9 +544,7 @@ void loop() {
     hand_state = !hand_state;
     sendMQTT(); // Send data and hand_state state to topic_clicker_data
     StickCP2.Display.clear();
-    int vol = StickCP2.Power.getBatteryVoltage();
-    StickCP2.Display.setCursor(10, 10, 2);
-    StickCP2.Display.printf("BAT: %dmv", vol);
+    getBat();
   }
 
   // Display the hand_state and reminder message on the StickCP2 display
@@ -591,14 +557,11 @@ void loop() {
   unsigned long currentTime = millis();
   if (currentTime - lastUpdateTime >= updateInterval) {
     StickCP2.Display.fillRect(30, 0, 100, 30, 0);
-    int vol = StickCP2.Power.getBatteryVoltage();
-    StickCP2.Display.setCursor(10, 10, 2);
-    StickCP2.Display.printf("BAT: %dmv", vol);
+    getBat();
 
     // Update the last update time
     lastUpdateTime = currentTime;
   }
-
   // Keep mic recording
   if (StickCP2.Mic.isEnabled()) {
     auto data = &rec_data[0];
@@ -607,5 +570,4 @@ void loop() {
       getMicInfo();
     }
   }
-  delay(100);
 }
